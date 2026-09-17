@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSP Explorer — Dynamic Programming</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#120d1b;--panel:#1b1325;--panel2:#241832;--teal:#b58cff;
+  --gold:#ff7f66;--orange:#ffb86b;--cream:#fff4ea;--muted:#b7a9bd;
+  --line:#473655;--danger:#ff6f91;--shadow:0 20px 60px rgba(0,0,0,.38)
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;color:var(--cream);font-family:'Space Grotesk',Arial,sans-serif;
+background:radial-gradient(circle at 12% 8%,rgba(181,140,255,.09),transparent 25%),
+radial-gradient(circle at 88% 15%,rgba(255,127,102,.10),transparent 24%),
+linear-gradient(180deg,#100b18,#171022 48%,#120d1b);min-height:100vh}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.12;
+background-image:linear-gradient(rgba(57,230,208,.08) 1px,transparent 1px),
+linear-gradient(90deg,rgba(57,230,208,.08) 1px,transparent 1px);
+background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 85%)}
+header{position:relative;overflow:hidden;padding:32px 6vw 34px;
+background:linear-gradient(120deg,#130e1c,#291735 55%,#32191b);border-bottom:1px solid var(--line)}
+.scan{position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--teal),transparent);
+box-shadow:0 0 18px var(--teal);animation:scan 4s linear infinite}
+@keyframes scan{from{transform:translateY(0)}to{transform:translateY(170px)}}
+.topline{font:500 11px 'DM Mono';letter-spacing:2px;color:var(--teal);text-transform:uppercase}
+h1{margin:9px 0 4px;font-size:clamp(38px,6vw,70px);letter-spacing:-3px;line-height:.95}
+h1 span{color:var(--gold);text-shadow:0 0 24px rgba(255,200,87,.3)}
+.subtitle{max-width:850px;color:#abc0c2;margin:13px 0 0;font-size:15px}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.badge{font:500 11px 'DM Mono';padding:7px 10px;border:1px solid #35545a;background:#21162d;color:#c9dddd;border-radius:6px}
+.hero{display:flex;align-items:center;gap:22px;margin-top:22px;max-width:1000px}
+.traveller{width:112px;height:112px;flex:0 0 112px;border:1px solid #36575c;border-radius:50%;background:#0b2229;display:grid;place-items:center;box-shadow:0 0 30px rgba(57,230,208,.08)}
+.traveller svg{width:94px;height:94px}
+.hero-copy{font:500 11px 'DM Mono';color:#9b8aa1;line-height:1.8}
+.hero-copy b{color:var(--gold)}
+.container{width:min(1220px,92%);margin:28px auto 60px}
+.card{background:linear-gradient(145deg,rgba(13,32,40,.95),rgba(7,20,27,.97));border:1px solid var(--line);
+border-radius:14px;box-shadow:var(--shadow);padding:22px;margin-bottom:20px;position:relative;overflow:hidden}
+.card:before{content:"";position:absolute;left:0;top:0;width:60px;height:1px;background:var(--teal);box-shadow:0 0 15px var(--teal)}
+.card:after{content:"";position:absolute;right:0;bottom:0;width:75px;height:1px;background:var(--gold);box-shadow:0 0 15px var(--gold)}
+.section-title{display:flex;align-items:center;gap:10px;margin:0 0 16px;font-size:18px}
+.section-title span{font:500 10px 'DM Mono';color:#06201d;background:var(--teal);padding:6px 8px;border-radius:4px}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start}.traveller{width:90px;height:90px;flex-basis:90px}}
+label{display:block;font-weight:700;font-size:12px;margin:0 0 7px;color:#bed0d0}
+textarea,input,select{width:100%;border:1px solid #315159;border-radius:9px;padding:12px 14px;font:500 13px 'DM Mono';
+outline:none;background:#120d19;color:#edf8f6}
+textarea{min-height:145px;resize:vertical}textarea:focus,input:focus,select:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(57,230,208,.08)}
+.hint{font-size:12px;color:var(--muted);line-height:1.55;margin-top:7px}
+.controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+button{border:1px solid #35545a;border-radius:8px;padding:11px 15px;font-weight:800;cursor:pointer;transition:.18s}
+button:hover{transform:translateY(-2px)}
+.primary{color:#06201d;background:linear-gradient(100deg,var(--teal),#7af5e7);border-color:var(--teal);box-shadow:0 0 25px rgba(57,230,208,.15)}
+.secondary{background:#21162d;color:#d0e1e0}
+.notice{padding:12px 14px;border-left:2px solid var(--gold);background:#211a0e;border-radius:7px;font:12px 'DM Mono';color:#d6c49b;margin-top:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{padding:15px;border-radius:10px;background:#171020;border:1px solid #23434a}
+.stat b{display:block;font:600 24px 'DM Mono';color:var(--teal)}.stat small{color:#9b8aa1;font-size:11px}
+.table-wrap{overflow:auto;border:1px solid #23434a;border-radius:9px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 12px;border-bottom:1px solid #1b343b;text-align:left;white-space:nowrap}
+th{background:#2a1835;color:var(--teal);font:500 11px 'DM Mono';letter-spacing:.8px;text-transform:uppercase}td{color:#cfdddd}
+.pill{display:inline-block;padding:4px 8px;border-radius:5px;background:#2b1828;color:var(--gold);border:1px solid #4c4a2a;font-family:'DM Mono'}
+.steps{display:flex;flex-direction:column;gap:12px}.step{border:1px solid #23434a;border-radius:11px;padding:15px;background:linear-gradient(110deg,#1a1224,#21162d)}
+.step-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}.step-num{background:#2b1d0b;color:#ffd979;border:1px solid #71552a;border-radius:5px;padding:5px 8px;font:500 10px 'DM Mono'}
+.step-title{font-weight:800}.step-desc{font-size:12px;color:#82999d}.diagram{overflow:auto;background:#100c18;border:1px solid #473655;border-radius:8px;margin-top:10px;min-height:240px;padding:8px}
+svg{display:block;margin:auto}.edge{stroke:#6d8588;stroke-width:2}.edge.best{stroke:var(--gold);stroke-width:4;filter:drop-shadow(0 0 5px rgba(255,200,87,.45))}
+.city circle{fill:#24162f;stroke:var(--teal);stroke-width:2.3}.city.start circle{fill:#351827;stroke:var(--gold)}
+.city text{font-size:12px;font-weight:800;fill:#effcf9;text-anchor:middle;dominant-baseline:middle}
+.edge-label{font:500 10px 'DM Mono';fill:#9eb5b5}
+.final{background:radial-gradient(circle at 50% 0%,rgba(57,230,208,.08),transparent 42%),#100c18;border:1px solid #513d5d;border-radius:12px;padding:12px;overflow:auto}
+.final svg{min-width:650px}.output{background:#041016;color:var(--gold);border:1px solid #28444a;border-radius:9px;padding:16px;font:13px/1.7 'DM Mono';overflow:auto}
+.theory{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.theory article{padding:15px;border:1px solid #24444b;border-radius:10px;background:#1a1224}.theory h3{margin:0 0 7px;color:var(--gold);font-size:14px}.theory p{margin:0;color:#b7a9bd;font-size:12px;line-height:1.6}
+@media(max-width:800px){.theory{grid-template-columns:1fr}}
+.notice.error{border-left-color:var(--danger);color:#ffc3cb;background:#251118}
+
+.dp-state{
+  display:grid;grid-template-columns:1.05fr .95fr;gap:14px;align-items:start
+}
+@media(max-width:900px){.dp-state{grid-template-columns:1fr}}
+.dp-formula{
+  background:#120d19;border:1px solid #473655;border-radius:9px;padding:12px;
+  font:12px/1.65 'DM Mono';color:#c5b7cc
+}
+.dp-formula b{color:#ffb86b}
+.dp-endpoints{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.dp-endpoint{padding:7px 9px;border-radius:6px;background:#24152b;border:1px solid #563847;font:500 11px 'DM Mono';color:#ffd7c8}
+.dp-endpoint strong{color:#b58cff}
+.step-diagram{
+  overflow:hidden;background:#100c18;border:1px solid #473655;border-radius:10px;padding:8px;width:100%
+}
+.state-node circle{fill:#24132e;stroke:#b58cff;stroke-width:2.4}
+.state-node.done circle{fill:#2a1930;stroke:#ffb86b}
+.state-node.current circle{fill:#3b1830;stroke:#ff7f66;stroke-width:3}
+.state-node.start circle{fill:#2b1624;stroke:#ffb86b;stroke-width:3}
+.state-node text{font-size:12px;font-weight:800;fill:#fff4ea;text-anchor:middle;dominant-baseline:middle}
+.state-edge{stroke:#5e4968;stroke-width:1.7;opacity:.55}
+.state-edge.active{stroke:#ff7f66;stroke-width:3.7;opacity:1;filter:drop-shadow(0 0 5px rgba(255,127,102,.45))}
+.state-label{font:500 10px 'DM Mono';fill:#d0b9d5}
+.hidden{display:none}footer{text-align:center;color:#60787c;font:11px 'DM Mono';padding-bottom:35px}
+
+.heading-with-traveller{
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+}
+.heading-with-traveller .heading-copy{flex:1}
+.heading-traveller{
+  width:180px;height:180px;object-fit:contain;flex:0 0 180px;
+  filter:drop-shadow(0 12px 24px rgba(0,0,0,.34));
+}
+@media(max-width:700px){
+  .heading-with-traveller{align-items:flex-start}
+  .heading-traveller{width:120px;height:120px;flex-basis:120px}
+}
+
+
+#steps{display:flex;flex-direction:column;gap:16px}
+#steps .step{width:100%}
+#steps .step-diagram{min-height:260px}
+#steps .step-desc{line-height:1.6}
+
+
+.heading-with-traveller{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.heading-with-traveller .heading-copy{flex:1}
+.heading-traveller{width:190px;height:190px;object-fit:contain;display:block;flex:0 0 190px;filter:drop-shadow(0 12px 24px rgba(0,0,0,.34))}
+@media(max-width:700px){.heading-with-traveller{align-items:flex-start}.heading-traveller{width:125px;height:125px;flex-basis:125px}}
+#steps img{display:block;max-width:100%;margin:auto}
+
+
+/* Header layout: title on left, salesman character on right */
+.heading-with-traveller{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:28px;
+  width:100%;
+}
+.heading-copy{flex:1;min-width:0}
+.heading-traveller{
+  width:250px;
+  height:250px;
+  object-fit:contain;
+  object-position:center;
+  flex:0 0 250px;
+  display:block;
+  filter:drop-shadow(0 14px 28px rgba(0,0,0,.38));
+}
+@media(max-width:850px){
+  .heading-with-traveller{align-items:flex-start}
+  .heading-traveller{width:185px;height:185px;flex-basis:185px}
+}
+@media(max-width:620px){
+  .heading-with-traveller{flex-direction:column}
+  .heading-traveller{width:160px;height:160px;flex-basis:160px;align-self:center}
+}
+
+
+.algorithm-box{
+  margin-top:14px;
+  padding:16px;
+  border:1px solid #473655;
+  border-radius:10px;
+  background:#160f20;
+}
+.algorithm-box h3{
+  margin:0 0 12px;
+  color:#ffb86b;
+  font-size:15px;
+}
+.algorithm-box ol{
+  margin:0;
+  padding-left:22px;
+  color:#cdbed2;
+  font-size:12px;
+  line-height:1.8;
+}
+.algorithm-box li::marker{color:#b58cff;font-weight:700}
+.code-box{
+  margin-top:12px;
+  padding:13px;
+  border:1px solid #473655;
+  border-radius:9px;
+  background:#100c18;
+  color:#e5d9ea;
+  font:12px/1.7 'DM Mono',monospace;
+  overflow:auto;
+}
+
+</style>
+</head>
+<body>
+<header>
+<div class="scan"></div>
+<div class="topline">Design & Analysis of Algorithms • Interactive Practical</div>
+<div class="heading-with-traveller">
+  <div class="heading-copy">
+    <h1>TRAVELLING <span>SALESMAN</span></h1>
+    <p class="subtitle">Explore the Travelling Salesman Problem using Dynamic Programming. Enter your own distance matrix, watch the optimization process, visualize the route, and inspect the final minimum-cost tour.</p>
+  </div>
+</div>
+
+
+
+
+</div>
+
+</div>
+<div class="badges"><span class="badge">Dynamic Programming</span><span class="badge">Optimal Tour</span><span class="badge">State Compression</span><span class="badge">O(n²2ⁿ)</span></div>
+
+
+</header>
+
+<main class="container">
+<section class="card">
+<h2 class="section-title"><span>01</span> INPUT DISTANCE MATRIX</h2>
+<div class="grid">
+<div>
+<label for="matrix">Enter a square matrix</label>
+<textarea id="matrix" placeholder="Example:
+0 10 15 20
+10 0 35 25
+15 35 0 30
+20 25 30 0">0 10 15 20
+10 0 35 25
+15 35 0 30
+20 25 30 0</textarea>
+<div class="hint">Use spaces or commas between values and new lines between cities. Use a valid square matrix; the DP demonstration supports up to 16 cities because TSP has exponential complexity. Diagonal values are ignored. Distances may be decimals; negative distances are rejected.</div>
+</div>
+<div>
+<label for="preset">SAMPLE INPUT</label>
+<select id="preset">
+<option value="">— Select a sample —</option>
+<option value="0 10 15 20|10 0 35 25|15 35 0 30|20 25 30 0">4 Cities • Classic</option>
+<option value="0 2 9 10 7|1 0 6 4 3|15 7 0 8 9|6 3 12 0 5|10 4 8 6 0">5 Cities • Asymmetric</option>
+<option value="0 12 10 19 8 14|12 0 3 7 2 11|10 3 0 6 20 9|19 7 6 0 4 13|8 2 20 4 0 5|14 11 9 13 5 0">6 Cities • DP Demo</option>
+</select>
+<div class="controls">
+<button class="primary" onclick="solve()">Find Optimal Tour →</button>
+<button class="secondary" onclick="loadSample()">Load Sample</button>
+<button class="secondary" onclick="clearAll()">Clear</button>
+</div>
+<div id="message" class="notice">Tip: City A is the starting city. For a directed/asymmetric matrix, enter different values for A→B and B→A.</div>
+</div>
+</div>
+</section>
+
+<section id="results" class="hidden">
+<section class="card">
+<h2 class="section-title"><span>02</span> PROBLEM ANALYSIS</h2>
+<div class="stats" id="stats"></div>
+<div style="height:14px"></div>
+<div class="table-wrap"><table id="matrixTable"></table></div>
+</section>
+
+<section class="card">
+<h2 class="section-title"><span>03</span> DYNAMIC PROGRAMMING — STEP BY STEP</h2>
+<p class="hint">The algorithm fixes City A as the start, evaluates subsets of visited cities, stores the cheapest cost for each state, and reconstructs the minimum complete tour.</p>
+<div id="steps" class="steps"></div>
+</section>
+
+<section class="card">
+<h2 class="section-title"><span>04</span> OPTIMAL TOUR DIAGRAM</h2>
+<div class="final" id="finalDiagram"></div>
+<div class="hint">Gold edges show the optimal tour. City A is the starting/ending city.</div>
+</section>
+
+<div class="grid">
+<section class="card">
+<h2 class="section-title"><span>05</span> OPTIMAL PATH</h2>
+<div class="output" id="pathOutput"></div>
+</section>
+<section class="card">
+<h2 class="section-title"><span>06</span> COMPLEXITY ANALYSIS</h2>
+<div id="complexity"></div>
+</section>
+</div>
+
+<section class="card">
+<h2 class="section-title"><span>07</span> THEORY QUICK GUIDE</h2>
+<div class="theory">
+<article><h3>What is TSP?</h3><p>Given a set of cities and travel costs between them, find a minimum-cost tour that visits every city exactly once and returns to the starting city.</p></article>
+<article><h3>DP State</h3><p>dp[mask][i] represents the minimum cost to start at A, visit exactly the cities represented by mask, and finish at city i.</p></article>
+<article><h3>Transition</h3><p>To reach i, try every previously visited city j and use dp[mask without i][j] + distance[j][i]. Store the smallest value.</p></article>
+</div>
+</section>
+<section class="card">
+  <h2 class="section-title"><span>08</span> ALGORITHM</h2>
+  <div class="algorithm-box">
+    <h3>Held–Karp Dynamic Programming Algorithm</h3>
+    <ol>
+      <li>Fix City A as the starting city.</li>
+      <li>Represent each visited-city set with a bitmask.</li>
+      <li>Initialize dp[{A}][A] = 0 and all other starting states as infinity.</li>
+      <li>For each subset, compute the cheapest way to reach every possible ending city.</li>
+      <li>Use the transition: dp[S][i] = min(dp[S−{i}][j] + d[j][i]).</li>
+      <li>After all cities are visited, add the cost of returning from the final city to A.</li>
+      <li>Backtrack through the parent table to reconstruct the optimal tour.</li>
+    </ol>
+    <div class="code-box">
+      for each subset S containing A<br>
+      &nbsp;&nbsp;for each ending city i in S, i ≠ A<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;dp[S][i] = min over j in S−{i} of (dp[S−{i}][j] + d[j][i])<br>
+      answer = min_i (dp[ALL][i] + d[i][A])
+    </div>
+  </div>
+</section>
+
+</section>
+</main>
+<footer>DAA Technical Practical • Travelling Salesman Problem • Dynamic Programming Interactive Demonstration</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+$("preset").addEventListener("change",e=>{if(e.target.value)$("matrix").value=e.target.value.replaceAll("|","\n")});
+
+function loadSample(){if($("preset").value)$("matrix").value=$("preset").value.replaceAll("|","\n");else $("matrix").value="0 10 15 20\n10 0 35 25\n15 35 0 30\n20 25 30 0";solve()}
+function clearAll(){$("matrix").value="";$("preset").value="";$("results").classList.add("hidden");$("steps").innerHTML="";$("finalDiagram").innerHTML=""}
+
+function parseMatrix(){
+ const raw=$("matrix").value.trim();
+ if(!raw)throw Error("Please enter a distance matrix.");
+ const rows=raw.split(/(?:\r?\n)+/).map(r=>r.trim()).filter(Boolean);
+ const m=rows.map(r=>r.split(/[\s,;]+/).filter(Boolean).map(Number));
+ const n=m.length;
+ if(n<2)throw Error("Please enter at least 2 cities.");
+ if(m.some(r=>r.length!==n))throw Error("The matrix must be square: same number of rows and columns.");
+ if(m.some(r=>r.some(x=>!Number.isFinite(x)||x<0)))throw Error("Use only finite non-negative distances.");
+ return m;
+}
+function fmt(x){return Number.isInteger(x)?String(x):x.toFixed(2)}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+function solve(){
+ try{
+  const d=parseMatrix(),n=d.length;
+  if(n>16){
+    throw Error("This Dynamic Programming demonstration supports up to 16 cities. TSP grows exponentially, so larger matrices can exhaust browser memory.");
+  }
+  const INF=Number.POSITIVE_INFINITY,N=2**n;
+  const dp=Array.from({length:N},()=>Array(n).fill(INF));
+  const parent=Array.from({length:N},()=>Array(n).fill(-1));
+  dp[1][0]=0;
+  let transitions=0;
+  const stateMasks=[];
+
+  for(let mask=1;mask<N;mask++){
+   if(!(mask&1))continue;
+   const size=popcount(mask);
+   if(size===1)continue;
+
+   for(let i=1;i<n;i++){
+    if(!(mask&(1<<i)))continue;
+    const prev=mask^(1<<i);
+    let best=INF,bj=-1;
+    for(let j=0;j<n;j++){
+     if(prev&(1<<j)){
+      transitions++;
+      const v=dp[prev][j]+d[j][i];
+      if(v<best){best=v;bj=j}
+     }
+    }
+    dp[mask][i]=best;
+    parent[mask][i]=bj;
+   }
+   stateMasks.push(mask);
+  }
+
+  const full=N-1;
+  let best=INF,last=-1;
+  for(let i=1;i<n;i++){
+   const v=dp[full][i]+d[i][0];
+   if(v<best){best=v;last=i}
+  }
+  if(!Number.isFinite(best))throw Error("No complete tour can be formed from this matrix.");
+
+  const rev=[last];
+  let mask=full,cur=last;
+  while(cur!==0){
+   const p=parent[mask][cur];
+   if(p<0)break;
+   mask^=1<<cur;
+   cur=p;
+   if(cur!==0)rev.push(cur);
+  }
+  const path=[0,...rev.reverse(),0];
+
+  window.tspDP={d,n,dp,parent,stateMasks,transitions};
+  render(d,best,path,stateMasks,transitions);
+ }catch(e){
+  $("results").classList.add("hidden");
+  $("message").className="notice error";
+  $("message").textContent=e.message;
+ }
+}
+function popcount(x){let c=0;while(x){x&=x-1;c++}return c}
+function city(i){return String.fromCharCode(65+i)}
+function names(mask){let a=[];for(let i=0;i<32;i++)if(mask&(1<<i))a.push(city(i));return a.join(", ")}
+function render(d,best,path,stateMasks,transitions){
+ const n=d.length;
+ $("results").classList.remove("hidden");
+ $("message").className="notice";
+ $("message").textContent="Optimal tour found successfully using Dynamic Programming.";
+
+ const dp=window.tspDP.dp,parent=window.tspDP.parent;
+ $("stats").innerHTML=
+   `<div class="stat"><b>${n}</b><small>Cities</small></div>
+    <div class="stat"><b>${fmt(best)}</b><small>Minimum tour cost</small></div>
+    <div class="stat"><b>${stateMasks.length}</b><small>DP states computed</small></div>
+    <div class="stat"><b>${transitions.toLocaleString()}</b><small>Transitions checked</small></div>`;
+
+ let th="<tr><th>City</th>"+Array.from({length:n},(_,i)=>`<th>${city(i)}</th>`).join("")+"</tr>";
+ let body=d.map((r,i)=>`<tr><td><span class="pill">${city(i)}</span></td>${r.map(x=>`<td>${fmt(x)}</td>`).join("")}</tr>`).join("");
+ $("matrixTable").innerHTML="<thead>"+th+"</thead><tbody>"+body+"</tbody>";
+
+
+ const stepsEl=$("steps");
+ let allSteps = "";
+
+ allSteps += `
+   <div class="step">
+     <div class="step-head">
+       <span class="step-num">START</span>
+       <span class="step-title">Initialize DP</span>
+     </div>
+     <div class="step-desc">dp[{A}][A] = 0. Every other initial state is ∞.</div>
+     <div class="step-diagram">${dpStateSVG(d,1,Array(n).fill(-1),[0,...Array(n-1).fill(Infinity)])}</div>
+   </div>`;
+
+ stateMasks.forEach((mask,stateIndex)=>{
+   const subset=names(mask);
+   const endpoints=[];
+   for(let i=1;i<n;i++){
+     if(mask&(1<<i)) endpoints.push({i,cost:dp[mask][i],prev:parent[mask][i]});
+   }
+
+   const endpointHTML=endpoints.map(e =>
+     `<span class="dp-endpoint"><strong>dp[${subset}][${city(e.i)}]</strong> = ${fmt(e.cost)}${e.prev>=0?` ← ${city(e.prev)} → ${city(e.i)}`:""}</span>`
+   ).join("");
+
+   allSteps += `
+     <div class="step">
+       <div class="step-head">
+         <span class="step-num">STEP ${stateIndex+1}</span>
+         <span class="step-title">Visit set {${subset}}</span>
+       </div>
+       <div class="step-desc">Compute the minimum cost of reaching each possible ending city while visiting exactly this subset.</div>
+       <div class="dp-state">
+         <div class="step-diagram">${dpStateSVG(d,mask,parent[mask],dp[mask])}</div>
+         <div class="dp-formula">
+           <b>DP transition</b><br>
+           dp[S][i] = min<sub>j∈S−{i}</sub> { dp[S−{i}][j] + d[j][i] }<br><br>
+           <b>Current subset:</b> {${subset}}<br>
+           <b>Previous subset size:</b> ${popcount(mask)-1}<br>
+           <b>Endpoints computed:</b>
+           <div class="dp-endpoints">${endpointHTML}</div>
+         </div>
+       </div>
+     </div>`;
+ });
+
+ allSteps += `
+   <div class="step">
+     <div class="step-head">
+       <span class="step-num">FINAL</span>
+       <span class="step-title">Close the tour</span>
+     </div>
+     <div class="step-desc">After visiting every city, add the return edge to A. Minimum total = ${fmt(best)}.</div>
+     <div class="step-diagram">${tourSVG(d,path,true)}</div>
+   </div>`;
+
+ stepsEl.innerHTML=allSteps;
+
+ $("finalDiagram").innerHTML=tourSVG(d,path,true);
+ const fullMask=(1<<n)-1;
+ const endpointDetails=[];
+ for(let i=1;i<n;i++){
+   if(Number.isFinite(dp[fullMask][i])){
+     endpointDetails.push(`${city(i)}: ${fmt(dp[fullMask][i])} + return ${fmt(d[i][0])} = ${fmt(dp[fullMask][i]+d[i][0])}`);
+   }
+ }
+ const closure=document.createElement("div");
+ closure.className="hint";
+ closure.style.marginTop="10px";
+ closure.innerHTML="<b>Final closure check:</b><br>"+endpointDetails.join("<br>");
+ $("finalDiagram").appendChild(closure);
+ $("pathOutput").innerHTML=
+   `<b>Optimal Path:</b><br><br>${path.map(city).join(" → ")}<br><br>
+    <b>Total Cost:</b> ${fmt(best)}<br><br>
+    ${path.slice(0,-1).map((v,i)=>`${city(v)} → ${city(path[i+1])} = ${fmt(d[v][path[i+1]])}`).join("<br>")}`;
+
+ $("complexity").innerHTML=
+   `<div class="stats" style="grid-template-columns:1fr 1fr">
+      <div class="stat"><b>O(n² · 2ⁿ)</b><small>Time complexity</small></div>
+      <div class="stat"><b>O(n · 2ⁿ)</b><small>Space complexity</small></div>
+    </div>
+    <p class="hint">Held–Karp Dynamic Programming replaces factorial tour enumeration with O(n²2ⁿ) time and O(n2ⁿ) memory. The method remains exponential, so very large inputs can require substantial resources.</p>`;
+
+ $("results").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function dpStateSVG(d,mask,parentRow,dpRow){
+ const n=d.length,W=Math.max(700,n*105),H=380,cx=W/2,cy=185,rx=Math.min(W*.39,Math.max(220,n*41)),ry=135;
+ const pts=Array.from({length:n},(_,i)=>{
+   const a=-Math.PI/2+i*2*Math.PI/n;
+   return {x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a)};
+ });
+ let edges="";
+ for(let i=1;i<n;i++){
+   if(!(mask&(1<<i)))continue;
+   const p=parentRow[i];
+   if(p<0)continue;
+   const a=pts[p],b=pts[i];
+   edges+=`<line class="state-edge active" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+   edges+=`<text class="state-label" x="${(a.x+b.x)/2+5}" y="${(a.y+b.y)/2-5}">${fmt(d[p][i])}</text>`;
+ }
+ let faint="";
+ for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+   if((mask&(1<<i))&& (mask&(1<<j))){
+     const a=pts[i],b=pts[j];
+     faint+=`<line class="state-edge" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+   }
+ }
+ let nodes=pts.map((p,i)=>{
+   const inSet=!!(mask&(1<<i));
+   const current=inSet&&i!==0&&Number.isFinite(dpRow[i]);
+   const cls=i===0?"start":(current?"current":(inSet?"done":""));
+   const suffix=inSet&&i!==0&&Number.isFinite(dpRow[i])?`<text x="${p.x}" y="${p.y+34}" style="font-size:10px;fill:#ffb86b">${fmt(dpRow[i])}</text>`:"";
+   return `<g class="state-node ${cls}"><circle cx="${p.x}" cy="${p.y}" r="21"/>
+     <text x="${p.x}" y="${p.y}">${city(i)}</text>${suffix}</g>`;
+ }).join("");
+ return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-label="Dynamic programming state diagram">
+   ${faint}${edges}${nodes}
+   <text x="${cx}" y="${H-18}" fill="#b7a9bd" text-anchor="middle" font-family="DM Mono" font-size="11">
+     PURPLE = VISITED STATE • CORAL = ACTIVE DP TRANSITION • A = START
+   </text>
+ </svg>`;
+}
+function tourSVG(d,path,best){
+ const n=d.length,W=Math.max(700,n*105),H=430,cx=W/2,cy=205,rx=Math.min(W*.39,Math.max(230,n*42)),ry=145;
+ const pts=Array.from({length:n},(_,i)=>{const a=-Math.PI/2+i*2*Math.PI/n;return{x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a)}});
+ const used=new Set();for(let i=0;i<path.length-1;i++)used.add(path[i]+"-"+path[i+1]);
+ let edges="";
+ for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+  const p=pts[i],q=pts[j], directed=used.has(i+"-"+j)||used.has(j+"-"+i);
+  if(directed){edges+=`<line class="edge best" x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}"/>`}
+ }
+ let labels="";
+ for(let i=0;i<n;i++)for(let j=0;j<n;j++)if(i!==j&&used.has(i+"-"+j)){
+  const p=pts[i],q=pts[j];labels+=`<text class="edge-label" x="${(p.x+q.x)/2+5}" y="${(p.y+q.y)/2-5}">${fmt(d[i][j])}</text>`;
+ }
+ let nodes=pts.map((p,i)=>`<g class="city ${i===0?"start":""}"><circle cx="${p.x}" cy="${p.y}" r="21"/><text x="${p.x}" y="${p.y}">${city(i)}</text></g>`).join("");
+ return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-label="Optimal TSP tour diagram">${edges}${labels}${nodes}<text x="${cx}" y="${H-24}" fill="#8da9ad" text-anchor="middle" font-family="DM Mono" font-size="11">CORAL = OPTIMAL TOUR • A = START / RETURN</text></svg>`;
+}
+</script>
+</body>
+</html>
+<style>
+#steps .step-diagram svg{
+  width:100%;
+  max-width:100%;
+  height:auto;
+  min-width:0 !important;
+}
+@media(max-width:900px){
+  #steps .dp-state{grid-template-columns:1fr}
+}
+</style>
